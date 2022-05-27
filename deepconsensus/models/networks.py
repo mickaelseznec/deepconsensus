@@ -325,45 +325,53 @@ class EncoderOnlyLearnedValuesTransformer(EncoderOnlyTransformer):
     base_indices, pw_indices, ip_indices, strand_indices, ccs_indices, sn_indices = data_providers.get_indices(
         self.params['max_passes'])
     if self.params.use_bases:
-      for i in range(*base_indices):
-        # Shape: [batch_size, length, per_base_hidden_size]
-        embedded = self.bases_embedding_layer(
-            tf.cast(inputs[:, :, i], tf.int32))
-        embedded_inputs.append(embedded)
-
+      inputs_gathered = tf.gather(inputs, tf.range(*base_indices), axis=2)
+      embeddings = self.pw_embedding_layer(tf.cast(inputs_gathered, tf.int32))
+      # Shape: [batch_size, length, len(base_indices), per_base_hidden_size]
+      shape = tf.shape(embeddings)
+      embedded_inputs.append(tf.reshape(
+        embeddings, [shape[0], shape[1], shape[2] * shape[3]]))
 
     if self.params.use_pw:
-      for i in range(*pw_indices):
-        # Shape: [batch_size, length, pw_hidden_size]
-        embedded = self.pw_embedding_layer(tf.cast(inputs[:, :, i], tf.int32))
-        embedded_inputs.append(embedded)
+      inputs_gathered = tf.gather(inputs, tf.range(*pw_indices), axis=2)
+      embeddings = self.pw_embedding_layer(tf.cast(inputs_gathered, tf.int32))
+      # Shape: [batch_size, length, len(pw_indices), pw_hidden_size]
+      shape = tf.shape(embeddings)
+      embedded_inputs.append(tf.reshape(
+        embeddings, [shape[0], shape[1], shape[2] * shape[3]]))
 
     if self.params.use_ip:
-      for i in range(*ip_indices):
-        # Shape: [batch_size, length, ip_hidden_size]
-        embedded = self.ip_embedding_layer(tf.cast(inputs[:, :, i], tf.int32))
-        embedded_inputs.append(embedded)
+      inputs_gathered = tf.gather(inputs, tf.range(*ip_indices), axis=2)
+      embeddings = self.ip_embedding_layer(tf.cast(inputs_gathered, tf.int32))
+      # Shape: [batch_size, length, len(ip_indices), ip_hidden_size]
+      shape = tf.shape(embeddings)
+      embedded_inputs.append(tf.reshape(
+        embeddings, [shape[0], shape[1], shape[2] * shape[3]]))
 
     if self.params.use_strand:
-      for i in range(*strand_indices):
-        embedded = self.strand_embedding_layer(
-            tf.cast(inputs[:, :, i], tf.int32))
-        embedded_inputs.append(embedded)
+      inputs_gathered = tf.gather(inputs, tf.range(*strand_indices), axis=2)
+      embeddings = self.strand_embedding_layer(tf.cast(inputs_gathered, tf.int32))
+      shape = tf.shape(embeddings)
+      embedded_inputs.append(tf.reshape(
+        embeddings, [shape[0], shape[1], shape[2] * shape[3]]))
 
     if self.params.use_ccs:
-      for i in range(*ccs_indices):
-        embedded = self.bases_embedding_layer(
-            tf.cast(inputs[:, :, i], tf.int32))
-        embedded_inputs.append(embedded)
+      inputs_gathered = tf.gather(inputs, tf.range(*ccs_indices), axis=2)
+      embeddings = self.bases_embedding_layer(tf.cast(inputs_gathered, tf.int32))
+      shape = tf.shape(embeddings)
+      embedded_inputs.append(tf.reshape(
+        embeddings, [shape[0], shape[1], shape[2] * shape[3]]))
 
     # TODO: experiment with computing a weighted average using snr as
     # weights to aggregate subread-level embeddings (instead of concatenating).
     if self.params.use_sn:
       # The last four elements in the last dimension in the inputs tensor
       # correspond to the four signal-to-noise ratio scores for A, G, C, T.
-      for i in range(*sn_indices):
-        embedded = self.sn_embedding_layer(tf.cast(inputs[:, :, i], tf.int32))
-        embedded_inputs.append(embedded)
+      inputs_gathered = tf.gather(inputs, tf.range(*sn_indices), axis=2)
+      embeddings = self.sn_embedding_layer(tf.cast(inputs_gathered, tf.int32))
+      shape = tf.shape(embeddings)
+      embedded_inputs.append(tf.reshape(
+        embeddings, [shape[0], shape[1], shape[2] * shape[3]]))
 
     embedded_inputs = tf.concat(embedded_inputs, axis=-1)
     embedded_inputs = tf.cast(embedded_inputs, self.params['dtype'])
